@@ -60,31 +60,58 @@
 
 #define POLL_TIME (5 * 1000)
 
+#define EMERGENCY_STOP 20
+
 EspSoftwareSerial::UART swSer1;
 RapiSender rapiSender(&RAPI_PORT);
 
 uint32_t next_status = 0;
 String uuid="";
-Adafruit_RA8875 tft = Adafruit_RA8875(LCD_CS, LCD_RST, SPI_SCK, SPI_MISO, SPI_MOSI);
+Adafruit_RA8875 tft = Adafruit_RA8875(LCD_CS, LCD_RST);
 U8G2_FOR_ADAFRUIT_GFX u8g2_for_adafruit_gfx;
 MFRC522 mfrc522(0x28, 0x28);
 File RFID_DATA;
 Buzzer buzzer = Buzzer(BEEPER,PWMCHANNEL,RESOLUTION);
-static int lcd_state = 0;
+static int lcd_state  ;
+static int layer = 0;
 
-void IRAM_ATTR EM() {
-    
-    rapiSender.sendCmd("$FD");
-    DEBUG_PORT.println("SHUT DOWN EVSE!!!!");
-    lcd(15);
-    
-    
+void memorytolayer(int L){
+  if(L == 0){
+    tft.writeCommand(0x41);
+    // Set bit 1
+    tft.writeData(0x00);
+  }
+  else{
+    tft.writeCommand(0x41);
+    // Set bit 1
+    tft.writeData(0x01);
+  }
+  delay(17);
 }
 
-void lcd(int state){
+void displaytolayer(int L){
+  if(L == 0){
+    tft.writeCommand(0x52);
+    // Set bit 1
+    tft.writeData(0x00);
+  }
+  else  {
+    tft.writeCommand(0x52);
+    // Set bit 1
+    tft.writeData(0x01);
+  }
+  delay(17);
+}
+
+void LCD_display(int state){
+
   if(lcd_state!=state){
-  tft.fillScreen(RA8875_BLACK);
+  memorytolayer(layer);
   lcd_state = state;
+  tft.fillScreen(RA8875_BLACK);
+  }
+  else{
+    return;
   }
   
   switch (state)
@@ -99,7 +126,7 @@ void lcd(int state){
     u8g2_for_adafruit_gfx.print(F("開機中"));
       
     break;
-  case 20:
+  case OPENEVSE_STATE_SLEEPING:
     //待機
     u8g2_for_adafruit_gfx.setFontMode(2);                
     u8g2_for_adafruit_gfx.setFontDirection(0);            
@@ -124,7 +151,7 @@ void lcd(int state){
     u8g2_for_adafruit_gfx.print(F("車位:"));
       
     break;
-  case 12:
+  case 100:
     //預約充電模式等待中
     u8g2_for_adafruit_gfx.setFontMode(2);                 
     u8g2_for_adafruit_gfx.setFontDirection(0);            
@@ -184,7 +211,7 @@ void lcd(int state){
     u8g2_for_adafruit_gfx.print(F("車位:"));
     break;
   
-   case 15:
+   case EMERGENCY_STOP:
     //緊急停止
     u8g2_for_adafruit_gfx.setFontMode(2);                
     u8g2_for_adafruit_gfx.setFontDirection(0);            
@@ -198,6 +225,17 @@ void lcd(int state){
     
     break;
   }
+  displaytolayer(layer);
+  layer ^= 1;
+}
+
+void IRAM_ATTR EM() {
+    
+    rapiSender.sendCmd("$FD");
+    DEBUG_PORT.println("SHUT DOWN EVSE!!!!");
+    LCD_display(EMERGENCY_STOP);
+    delay(1000);
+    LCD_display(OPENEVSE_STATE_DISABLED);
 }
 
 
@@ -206,6 +244,7 @@ void setup() {
   
   Serial.begin(115200);
   Serial1.begin(ATMEGA32_BAUD, SERIAL_8N1, ATMEGA32_RX, ATMEGA32_TX);
+  SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI);
 
   while (!Serial && millis() < 5000);
   delay(500);
@@ -264,15 +303,8 @@ void setup() {
   tft.PWM1out(255);
   tft.fillScreen(RA8875_BLACK);
 
-  /* Switch to text mode */
   tft.textMode();
-  //tft.cursorBlink(32);
-  lcd(lcd_state);
-
-  /* Set the cursor location (in pixels) */
-  // tft.textSetCursor(10, 10);
-  // tft.textTransparent(RA8875_WHITE);
-  // tft.textWrite("EVSE Init");
+  LCD_display(OPENEVSE_STATE_STARTING);
 
   digitalWrite(LED1,LOW);
   digitalWrite(LED2,LOW);
@@ -375,7 +407,7 @@ void loop() {
           // tft.textSetCursor(50, 150);
           // tft.textEnlarge(1);
           // tft.textWrite(get_state_name(evse_state));
-          lcd(evse_state);
+          LCD_display(evse_state);
           if(evse_state==OPENEVSE_STATE_CHARGING){
             digitalWrite(LED2,HIGH);
           }
