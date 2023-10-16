@@ -61,6 +61,7 @@
 #define POLL_TIME (5 * 1000)
 
 #define EMERGENCY_STOP 20
+#define SCHEDULED_CHARGING 21
 
 EspSoftwareSerial::UART swSer1;
 RapiSender rapiSender(&RAPI_PORT);
@@ -72,7 +73,7 @@ U8G2_FOR_ADAFRUIT_GFX u8g2_for_adafruit_gfx;
 MFRC522 mfrc522(0x28, 0x28);
 File RFID_DATA;
 Buzzer buzzer = Buzzer(BEEPER,PWMCHANNEL,RESOLUTION);
-static int lcd_state  ;
+static int lcd_state;
 static int layer = 0;
 
 void memorytolayer(int L){
@@ -117,108 +118,228 @@ void LCD_display(int state){
   switch (state)
   {
   case OPENEVSE_STATE_STARTING:
-    //開機
+    /*開機*/
     u8g2_for_adafruit_gfx.setFontMode(2);                 
     u8g2_for_adafruit_gfx.setFontDirection(0);           
     u8g2_for_adafruit_gfx.setForegroundColor(RA8875_WHITE);      
-    u8g2_for_adafruit_gfx.setFont(evse_font1_40);  
+    u8g2_for_adafruit_gfx.setFont(evse_text1_40);  
     u8g2_for_adafruit_gfx.setCursor(180,145);                
-    u8g2_for_adafruit_gfx.print(F("開機中"));
-      
-    break;
-  case OPENEVSE_STATE_SLEEPING:
-    //待機
-    u8g2_for_adafruit_gfx.setFontMode(2);                
-    u8g2_for_adafruit_gfx.setFontDirection(0);            
-    u8g2_for_adafruit_gfx.setForegroundColor(RA8875_WHITE);      
-    u8g2_for_adafruit_gfx.setFont(evse_font1_40);  
-    u8g2_for_adafruit_gfx.setCursor(160,145);              
-    u8g2_for_adafruit_gfx.print(F("待機模式"));
-    
-    break;
-  case OPENEVSE_STATE_CONNECTED:
-    //檢測到車輛
-    u8g2_for_adafruit_gfx.setFontMode(2);                 
-    u8g2_for_adafruit_gfx.setFontDirection(0);            
-    u8g2_for_adafruit_gfx.setForegroundColor(RA8875_WHITE);     
-    u8g2_for_adafruit_gfx.setFont(evse_font1_40);  
-    u8g2_for_adafruit_gfx.setCursor(0,40);               
-    u8g2_for_adafruit_gfx.print(F("社區型智慧充電樁"));
-    u8g2_for_adafruit_gfx.setFont(evse_font1_30); 
-    u8g2_for_adafruit_gfx.setCursor(0,90);                
-    u8g2_for_adafruit_gfx.print(F("偵測到電動車"));
-    u8g2_for_adafruit_gfx.setCursor(240,240);
-    u8g2_for_adafruit_gfx.print(F("車位:"));
-      
-    break;
-  case 100:
-    //預約充電模式等待中
-    u8g2_for_adafruit_gfx.setFontMode(2);                 
-    u8g2_for_adafruit_gfx.setFontDirection(0);            
-    u8g2_for_adafruit_gfx.setForegroundColor(RA8875_WHITE);     
-    u8g2_for_adafruit_gfx.setFont(evse_font1_40);  
-    u8g2_for_adafruit_gfx.setCursor(0,40);               
-    u8g2_for_adafruit_gfx.print(F("社區型智慧充電樁"));
-    u8g2_for_adafruit_gfx.setFont(evse_font1_30);  
-    u8g2_for_adafruit_gfx.setCursor(0,90);                
-    u8g2_for_adafruit_gfx.print(F("偵測到電動車\n執行預約充電模式\n再感應一次卡片停止充電"));
-    u8g2_for_adafruit_gfx.setCursor(240,240);
-    u8g2_for_adafruit_gfx.print(F("車位:"));
-    break;
-  case OPENEVSE_STATE_CHARGING:
-    //預約充電模式充電中
-    u8g2_for_adafruit_gfx.setFontMode(2);                 
-    u8g2_for_adafruit_gfx.setFontDirection(0);            
-    u8g2_for_adafruit_gfx.setForegroundColor(RA8875_WHITE);      
-    u8g2_for_adafruit_gfx.setFont(evse_font1_40);  
-    u8g2_for_adafruit_gfx.setCursor(0,40);                
-    u8g2_for_adafruit_gfx.print(F("社區型智慧充電樁"));
-    u8g2_for_adafruit_gfx.setFont(evse_font1_30);  
-    u8g2_for_adafruit_gfx.setCursor(0,90);                
-    //u8g2_for_adafruit_gfx.print(F("偵測到電動車\n預約充電模式充電中\n再感應一次卡片停止充電"));
-    u8g2_for_adafruit_gfx.print(F("偵測到電動車\n充電模式充電中"));
-    u8g2_for_adafruit_gfx.setCursor(240,240);
-    u8g2_for_adafruit_gfx.print(F("車位:"));
+    u8g2_for_adafruit_gfx.print(F("開機中"));     
     break;
 
   case OPENEVSE_STATE_NOT_CONNECTED:
-    //未檢測到車輛
+    /*未檢測到車輛*/
     u8g2_for_adafruit_gfx.setFontMode(2);                 
     u8g2_for_adafruit_gfx.setFontDirection(0);            
     u8g2_for_adafruit_gfx.setForegroundColor(RA8875_WHITE);
-    u8g2_for_adafruit_gfx.setFont(evse_font1_40);   
+    u8g2_for_adafruit_gfx.setFont(evse_text1_40);   
     u8g2_for_adafruit_gfx.setCursor(0,40);                
     u8g2_for_adafruit_gfx.print(F("社區型智慧充電樁"));
-    u8g2_for_adafruit_gfx.setFont(evse_font1_30);  
+    u8g2_for_adafruit_gfx.setFont(evse_text1_30);  
     u8g2_for_adafruit_gfx.setCursor(0,90);                
     u8g2_for_adafruit_gfx.print(F("未偵測到電動車"));
     u8g2_for_adafruit_gfx.setCursor(240,240);
     u8g2_for_adafruit_gfx.print(F("車位:"));
     break;
-  
-  case OPENEVSE_STATE_DISABLED:
-    //等待刷卡開機
+
+  case OPENEVSE_STATE_CONNECTED:
+    /*檢測到車輛*/
     u8g2_for_adafruit_gfx.setFontMode(2);                 
     u8g2_for_adafruit_gfx.setFontDirection(0);            
     u8g2_for_adafruit_gfx.setForegroundColor(RA8875_WHITE);     
-    u8g2_for_adafruit_gfx.setFont(evse_font1_40);  
+    u8g2_for_adafruit_gfx.setFont(evse_text1_40);  
     u8g2_for_adafruit_gfx.setCursor(0,40);               
     u8g2_for_adafruit_gfx.print(F("社區型智慧充電樁"));
-    u8g2_for_adafruit_gfx.setFont(evse_font1_30);  
+    u8g2_for_adafruit_gfx.setFont(evse_text1_30); 
     u8g2_for_adafruit_gfx.setCursor(0,90);                
-    u8g2_for_adafruit_gfx.print(F("感應一次卡片"));
+    u8g2_for_adafruit_gfx.print(F("偵測到電動車"));
+    u8g2_for_adafruit_gfx.setCursor(240,240);
+    u8g2_for_adafruit_gfx.print(F("車位:"));
+    break;
+
+  case OPENEVSE_STATE_CHARGING:
+    /*預約充電模式充電中*/
+    u8g2_for_adafruit_gfx.setFontMode(2);                 
+    u8g2_for_adafruit_gfx.setFontDirection(0);            
+    u8g2_for_adafruit_gfx.setForegroundColor(RA8875_WHITE);      
+    u8g2_for_adafruit_gfx.setFont(evse_text1_40);  
+    u8g2_for_adafruit_gfx.setCursor(0,40);                
+    u8g2_for_adafruit_gfx.print(F("社區型智慧充電樁"));
+    u8g2_for_adafruit_gfx.setFont(evse_text1_30);  
+    u8g2_for_adafruit_gfx.setCursor(0,90);                
+    u8g2_for_adafruit_gfx.print(F("偵測到電動車\n充電模式充電中"));
     u8g2_for_adafruit_gfx.setCursor(240,240);
     u8g2_for_adafruit_gfx.print(F("車位:"));
     break;
   
+  case OPENEVSE_STATE_VENT_REQUIRED:
+    /*啟動車輛需要空調保護*/
+    u8g2_for_adafruit_gfx.setFontMode(2);                 
+    u8g2_for_adafruit_gfx.setFontDirection(0);            
+    u8g2_for_adafruit_gfx.setForegroundColor(RA8875_WHITE);     
+    u8g2_for_adafruit_gfx.setFont(evse_text1_40);  
+    u8g2_for_adafruit_gfx.setCursor(0,40);               
+    u8g2_for_adafruit_gfx.print(F("社區型智慧充電樁"));
+    u8g2_for_adafruit_gfx.setFont(evse_text1_30);  
+    u8g2_for_adafruit_gfx.setCursor(0,90);                
+    u8g2_for_adafruit_gfx.print(F("停止充電!!/n錯誤:車輛需要空調"));
+    u8g2_for_adafruit_gfx.setCursor(240,240);
+    u8g2_for_adafruit_gfx.print(F("車位:"));
+    break;
+
+  case OPENEVSE_STATE_DIODE_CHECK_FAILED:
+    /*二極體測試錯誤*/
+    u8g2_for_adafruit_gfx.setFontMode(2);                 
+    u8g2_for_adafruit_gfx.setFontDirection(0);            
+    u8g2_for_adafruit_gfx.setForegroundColor(RA8875_WHITE);     
+    u8g2_for_adafruit_gfx.setFont(evse_text1_40);  
+    u8g2_for_adafruit_gfx.setCursor(0,40);               
+    u8g2_for_adafruit_gfx.print(F("社區型智慧充電樁"));
+    u8g2_for_adafruit_gfx.setFont(evse_text1_30);  
+    u8g2_for_adafruit_gfx.setCursor(0,90);                
+    u8g2_for_adafruit_gfx.print(F("錯誤:二極體測試錯誤"));
+    u8g2_for_adafruit_gfx.setCursor(240,240);
+    u8g2_for_adafruit_gfx.print(F("車位:"));
+    break;
+
+  case OPENEVSE_STATE_GFI_FAULT:
+    /*啟動GFCI漏電保護*/
+    u8g2_for_adafruit_gfx.setFontMode(2);                 
+    u8g2_for_adafruit_gfx.setFontDirection(0);            
+    u8g2_for_adafruit_gfx.setForegroundColor(RA8875_WHITE);     
+    u8g2_for_adafruit_gfx.setFont(evse_text1_40);  
+    u8g2_for_adafruit_gfx.setCursor(0,40);               
+    u8g2_for_adafruit_gfx.print(F("社區型智慧充電樁"));
+    u8g2_for_adafruit_gfx.setFont(evse_text1_30);  
+    u8g2_for_adafruit_gfx.setCursor(0,90);                
+    u8g2_for_adafruit_gfx.print(F("錯誤:漏電產生/n啟動GFCI漏電保護"));
+    u8g2_for_adafruit_gfx.setCursor(240,240);
+    u8g2_for_adafruit_gfx.print(F("車位:"));
+    break;
+
+  case OPENEVSE_STATE_NO_EARTH_GROUND:
+    /*充電樁未接地錯誤*/
+    u8g2_for_adafruit_gfx.setFontMode(2);                 
+    u8g2_for_adafruit_gfx.setFontDirection(0);            
+    u8g2_for_adafruit_gfx.setForegroundColor(RA8875_WHITE);     
+    u8g2_for_adafruit_gfx.setFont(evse_text1_40);  
+    u8g2_for_adafruit_gfx.setCursor(0,40);               
+    u8g2_for_adafruit_gfx.print(F("社區型智慧充電樁"));
+    u8g2_for_adafruit_gfx.setFont(evse_text1_30);  
+    u8g2_for_adafruit_gfx.setCursor(0,90);                
+    u8g2_for_adafruit_gfx.print(F("錯誤:未接地錯誤"));
+    u8g2_for_adafruit_gfx.setCursor(240,240);
+    u8g2_for_adafruit_gfx.print(F("車位:"));
+    break;
+
+  case OPENEVSE_STATE_STUCK_RELAY:
+    /*繼電器測試錯誤*/
+    u8g2_for_adafruit_gfx.setFontMode(2);                 
+    u8g2_for_adafruit_gfx.setFontDirection(0);            
+    u8g2_for_adafruit_gfx.setForegroundColor(RA8875_WHITE);     
+    u8g2_for_adafruit_gfx.setFont(evse_text1_40);  
+    u8g2_for_adafruit_gfx.setCursor(0,40);               
+    u8g2_for_adafruit_gfx.print(F("社區型智慧充電樁"));
+    u8g2_for_adafruit_gfx.setFont(evse_text1_30);  
+    u8g2_for_adafruit_gfx.setCursor(0,90);                
+    u8g2_for_adafruit_gfx.print(F("錯誤:繼電器測試錯誤"));
+    u8g2_for_adafruit_gfx.setCursor(240,240);
+    u8g2_for_adafruit_gfx.print(F("車位:"));
+    break;
+
+  case OPENEVSE_STATE_GFI_SELF_TEST_FAILED:
+    /*GFCI漏電保護自檢錯誤*/
+    u8g2_for_adafruit_gfx.setFontMode(2);                 
+    u8g2_for_adafruit_gfx.setFontDirection(0);            
+    u8g2_for_adafruit_gfx.setForegroundColor(RA8875_WHITE);     
+    u8g2_for_adafruit_gfx.setFont(evse_text1_40);  
+    u8g2_for_adafruit_gfx.setCursor(0,40);               
+    u8g2_for_adafruit_gfx.print(F("社區型智慧充電樁"));
+    u8g2_for_adafruit_gfx.setFont(evse_text1_30);  
+    u8g2_for_adafruit_gfx.setCursor(0,90);                
+    u8g2_for_adafruit_gfx.print(F("錯誤:GFCI漏電保護自我測試錯誤"));
+    u8g2_for_adafruit_gfx.setCursor(240,240);
+    u8g2_for_adafruit_gfx.print(F("車位:"));
+    break;
+
+  case OPENEVSE_STATE_OVER_TEMPERATURE:
+    /*啟動溫度保護*/
+    u8g2_for_adafruit_gfx.setFontMode(2);                 
+    u8g2_for_adafruit_gfx.setFontDirection(0);            
+    u8g2_for_adafruit_gfx.setForegroundColor(RA8875_WHITE);     
+    u8g2_for_adafruit_gfx.setFont(evse_text1_40);  
+    u8g2_for_adafruit_gfx.setCursor(0,40);               
+    u8g2_for_adafruit_gfx.print(F("社區型智慧充電樁"));
+    u8g2_for_adafruit_gfx.setFont(evse_text1_30);  
+    u8g2_for_adafruit_gfx.setCursor(0,90);                
+    u8g2_for_adafruit_gfx.print(F("錯誤:溫度過高,停止充電!!"));
+    u8g2_for_adafruit_gfx.setCursor(240,240);
+    u8g2_for_adafruit_gfx.print(F("車位:"));
+    break;
+
+  case OPENEVSE_STATE_OVER_CURRENT:
+    /*啟動電流保護*/
+    u8g2_for_adafruit_gfx.setFontMode(2);                 
+    u8g2_for_adafruit_gfx.setFontDirection(0);            
+    u8g2_for_adafruit_gfx.setForegroundColor(RA8875_WHITE);     
+    u8g2_for_adafruit_gfx.setFont(evse_text1_40);  
+    u8g2_for_adafruit_gfx.setCursor(0,40);               
+    u8g2_for_adafruit_gfx.print(F("社區型智慧充電樁"));
+    u8g2_for_adafruit_gfx.setFont(evse_text1_30);  
+    u8g2_for_adafruit_gfx.setCursor(0,90);                
+    u8g2_for_adafruit_gfx.print(F("錯誤:充電電流過高,停止充電!!"));
+    u8g2_for_adafruit_gfx.setCursor(240,240);
+    u8g2_for_adafruit_gfx.print(F("車位:"));
+    break;
+
    case EMERGENCY_STOP:
-    //緊急停止
+    /*緊急停止*/
     u8g2_for_adafruit_gfx.setFontMode(2);                
     u8g2_for_adafruit_gfx.setFontDirection(0);            
     u8g2_for_adafruit_gfx.setForegroundColor(RA8875_WHITE);      
-    u8g2_for_adafruit_gfx.setFont(evse_font1_40);  
+    u8g2_for_adafruit_gfx.setFont(evse_text1_40);  
     u8g2_for_adafruit_gfx.setCursor(160,145);              
     u8g2_for_adafruit_gfx.print(F("緊急停止!!"));
+    break;
+
+  case SCHEDULED_CHARGING:
+    /*預約充電模式等待中*/
+    u8g2_for_adafruit_gfx.setFontMode(2);                 
+    u8g2_for_adafruit_gfx.setFontDirection(0);            
+    u8g2_for_adafruit_gfx.setForegroundColor(RA8875_WHITE);     
+    u8g2_for_adafruit_gfx.setFont(evse_text1_40);  
+    u8g2_for_adafruit_gfx.setCursor(0,40);               
+    u8g2_for_adafruit_gfx.print(F("社區型智慧充電樁"));
+    u8g2_for_adafruit_gfx.setFont(evse_text1_30);  
+    u8g2_for_adafruit_gfx.setCursor(0,90);                
+    u8g2_for_adafruit_gfx.print(F("偵測到電動車\n執行預約充電模式\n再感應一次卡片停止充電"));
+    u8g2_for_adafruit_gfx.setCursor(240,240);
+    u8g2_for_adafruit_gfx.print(F("車位:"));
+    break;
+
+  case OPENEVSE_STATE_SLEEPING:
+    /*待機睡眠模式*/
+    u8g2_for_adafruit_gfx.setFontMode(2);                
+    u8g2_for_adafruit_gfx.setFontDirection(0);            
+    u8g2_for_adafruit_gfx.setForegroundColor(RA8875_WHITE);      
+    u8g2_for_adafruit_gfx.setFont(evse_text1_40);  
+    u8g2_for_adafruit_gfx.setCursor(160,145);              
+    u8g2_for_adafruit_gfx.print(F("待機模式"));
+    break;
+
+  case OPENEVSE_STATE_DISABLED:
+    /*等待刷卡開機*/
+    u8g2_for_adafruit_gfx.setFontMode(2);                 
+    u8g2_for_adafruit_gfx.setFontDirection(0);            
+    u8g2_for_adafruit_gfx.setForegroundColor(RA8875_WHITE);     
+    u8g2_for_adafruit_gfx.setFont(evse_text1_40);  
+    u8g2_for_adafruit_gfx.setCursor(0,40);               
+    u8g2_for_adafruit_gfx.print(F("社區型智慧充電樁"));
+    u8g2_for_adafruit_gfx.setFont(evse_text1_30);  
+    u8g2_for_adafruit_gfx.setCursor(0,90);                
+    u8g2_for_adafruit_gfx.print(F("請感應一次卡片，開啟充電模式"));
+    u8g2_for_adafruit_gfx.setCursor(240,240);
+    u8g2_for_adafruit_gfx.print(F("車位:"));
     break;
 
   default:
@@ -492,12 +613,12 @@ void loop() {
   //   }
   // RFID_DATA.close();
 
-  //display RFID on lcd  
+  //Display RFID on LCD  
   log_e("Card ID: %s", uuid);
   u8g2_for_adafruit_gfx.setFontMode(2);                 
   u8g2_for_adafruit_gfx.setFontDirection(0);            
   u8g2_for_adafruit_gfx.setForegroundColor(RA8875_WHITE);      
-  u8g2_for_adafruit_gfx.setFont(evse_font1_30);
+  u8g2_for_adafruit_gfx.setFont(evse_text1_30);
   u8g2_for_adafruit_gfx.setCursor(0,230);                
   u8g2_for_adafruit_gfx.print(F("卡號:"));
   tft.textSetCursor(80, 220);
